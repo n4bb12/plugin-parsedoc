@@ -1,4 +1,3 @@
-/* eslint-disable no-case-declarations */
 import { insertBatch, Lyra } from "@lyrasearch/lyra";
 import glob from "glob";
 import { readFile } from "node:fs/promises";
