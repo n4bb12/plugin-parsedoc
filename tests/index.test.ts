@@ -1,0 +1,44 @@
+import t from "tap";
+import { populateFromGlob, defaultHtmlSchema as schema, MergeStrategy } from "../src/index.js";
+import { create, search } from "@lyrasearch/lyra";
+
+t.test("it should store the values", async t => {
+  const db = create({ schema });
+  await populateFromGlob(db, "tests/fixtures/index.html");
+  t.strictSame(
+    (await search(db, { term: "Test" })).hits.map(({ document }) => document),
+    [{ id: "root[1].html[0].head[1]", content: "Test", type: "title" }],
+  );
+});
+
+t.test("when there are multiple consecutive elements with text with the same tag", async t => {
+  await t.test("it should merge the values when the strategy is merge (default)", async t => {
+    const db = create({ schema });
+    await populateFromGlob(db, "tests/fixtures/two-paragraphs.html");
+    t.equal(Object.values(db.docs).length, 1);
+  });
+
+  await t.test("it should keep records separated when the strategy is split", async t => {
+    const db = create({ schema });
+    await populateFromGlob(db, "tests/fixtures/two-paragraphs.html", { mergeStrategy: MergeStrategy.split });
+    t.equal(Object.values(db.docs).length, 2);
+  });
+
+  await t.test("it should keep separated and merged records when the strategy is both", async t => {
+    const db = create({ schema });
+    await populateFromGlob(db, "tests/fixtures/two-paragraphs.html", { mergeStrategy: MergeStrategy.both });
+    t.equal(Object.values(db.docs).length, 3);
+  });
+});
+
+t.test("it should not merge records when a different tag element goes in between", async t => {
+  const db = create({ schema });
+  await populateFromGlob(db, "tests/fixtures/item-in-between.html");
+  t.equal(Object.values(db.docs).length, 3);
+});
+
+t.test("it should not merge records when they belong to different containers ", async t => {
+  const db = create({ schema });
+  await populateFromGlob(db, "tests/fixtures/different-containers.html");
+  t.equal(Object.values(db.docs).length, 2);
+});
