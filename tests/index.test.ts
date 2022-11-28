@@ -50,3 +50,9 @@ t.test("it should change tags when specified in a transformFn", async t => {
   });
   t.strictSame(Object.values(db.docs), [{ id: "root[0].html[1].body[0]", content: "Heading", type: "h2" }]);
 });
+
+t.test("it should change the content when specified in a transformFn", async t => {
+  const db = create({ schema });
+  await populateFromGlob(db, "tests/fixtures/h1.html", { transformFn: node => node.tag === "h1" ? {...node, content: "New content" } : node });
+  t.strictSame(Object.values(db.docs), [{ id: "root[0].html[1].body[0]", content: "New content", type: "h1" }]);
+})

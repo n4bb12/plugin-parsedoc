@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import { rehype } from "rehype";
 import rehypePresetMinify from "rehype-preset-minify";
-import { Content, Root, Parent, Element } from "hast";
+import { Content, Root, Parent, Element, Text } from "hast";
 
 export enum MergeStrategy {
   merge = "merge",
@@ -80,9 +80,7 @@ function visitChildren(
   }
 
   if (node.type === "element" && typeof options?.transformFn === "function") {
-    const preparedNode = prepareNode(node);
-    const transformedNode = options.transformFn(preparedNode);
-    applyTransform(node, transformedNode);
+    applyTransform(node, options!.transformFn)
   }
 
   if (!("children" in node)) return;
@@ -92,12 +90,25 @@ function visitChildren(
   });
 }
 
-function prepareNode(node: Element): NodeContent {
-  return { tag: node.tagName, content: "", raw: "" };
+function applyTransform(node: Element, transformFn: TransformFn) {
+  const preparedNode = prepareNode(node);
+    const transformedNode = transformFn(preparedNode);
+    applyChanges(node, transformedNode);
 }
 
-function applyTransform(node: Element, transformedNode: NodeContent) {
+function prepareNode(node: Element): NodeContent {
+  const tag = node.tagName;
+  const content = isContentNode(node) ? (node.children[0] as Text).value : ""
+  return { tag, content, raw: "" };
+}
+
+function isContentNode(node: Element): boolean {
+  return node.children.length === 1 && node.children[0].type === "text";
+}
+
+function applyChanges(node: Element, transformedNode: NodeContent) {
   node.tagName = transformedNode.tag;
+  if (isContentNode(node)) (node.children[0] as Text).value = transformedNode.content
 }
 
 function addRecords(
