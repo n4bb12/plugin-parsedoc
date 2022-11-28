@@ -1,0 +1,79 @@
+{
+  "name": "@lyrasearch/plugin-parsedoc",
+  "version": "0.0.1",
+  "description": "Lyra plugin to populate an index with HTML/Markdown documents",
+  "main": "./dist/cjs/src/index.js",
+  "module": "./dist/esm/src/index.js",
+  "types": "./dist/esm/src/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "c8 tap --rcfile=tests/config/tap.yml tests/**/*.test.ts",
+    "changelog": "auto-changelog -p",
+    "commit": "pnpm lint-staged && cz",
+    "format": "prettier --write src tests",
+    "lint": "pnpm run format && eslint src tests  --ext .js,.ts,.mjs,.jsx,.tsx",
+    "prepare": "husky install && npm run build",
+    "build": "rimraf ./dist && concurrently 'npm:build:module'",
+    "build:cjs": "tsc --project tsconfig.cjs.json",
+    "build:module": "tsc --project tsconfig.esm.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lyrasearch/plugin-parsedoc.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lyrasearch/plugin-parsedoc/issues"
+  },
+  "homepage": "https://github.com/lyrasearch/plugin-parsedoc#readme",
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "lint-staged": {
+    "*": "pnpm lint"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.0.0",
+    "@types/hast": "^2.3.4",
+    "@types/node": "^18.6.2",
+    "@types/tap": "^15.0.7",
+    "@typescript-eslint/eslint-plugin": "^5.31.0",
+    "@typescript-eslint/parser": "^5.31.0",
+    "auto-changelog": "^2.4.0",
+    "c8": "^7.12.0",
+    "commitizen": "^4.2.5",
+    "concurrently": "^7.6.0",
+    "eslint": "^8.28.0",
+    "husky": "^8.0.2",
+    "lint-staged": "^13.0.3",
+    "prettier": "^2.8.0",
+    "rimraf": "^3.0.2",
+    "tap": "^16.3.0",
+    "ts-node": "^10.9.1",
+    "tslib": "^2.4.1",
+    "typescript": "^4.9.3"
+  },
+  "dependencies": {
+    "@lyrasearch/lyra": "^0.3.1",
+    "glob": "^8.0.3",
+    "hast-util-from-html": "^1.0.0",
+    "hast-util-to-html": "^8.0.3",
+    "rehype": "^12.0.1",
+    "rehype-parse": "^8.0.4",
+    "rehype-preset-minify": "^6.0.0"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "typescript"
+      ]
+    }
+  }
+}
