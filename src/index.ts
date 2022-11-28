@@ -58,7 +58,7 @@ export const populate = async (db: LyraInstance, data: Buffer, options?: Populat
   return insertBatch(db, records);
 };
 
-export function rehypeLyra(records: DefaultSchemaElement[], options?: PopulateOptions) {
+function rehypeLyra(records: DefaultSchemaElement[], options?: PopulateOptions) {
   return (tree: Root) => {
     tree.children.forEach((child, i) =>
       visitChildren(child, tree, `${options?.basePath ?? ""}root[${i}]`, records, options),
