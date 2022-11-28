@@ -22,45 +22,47 @@ type DefaultSchemaElement = {
   id: string;
 };
 
-type PluginOptions = {
+type PopulateFromGlobOptions = {
   transformFn?: TransformFn;
   mergeStrategy?: MergeStrategy;
 };
+
+type PopulateOptions = PopulateFromGlobOptions & { basePath?: string };
 const asyncGlob = promisify(glob);
 
 export const populateFromGlob = async (
   db: Lyra<typeof defaultHtmlSchema>,
   pattern: string,
-  options?: PluginOptions,
+  options?: PopulateFromGlobOptions,
 ): Promise<void> => {
   const files = await asyncGlob(pattern);
   await Promise.all(files.map(filename => populateFromFile(db, filename, options)));
   return;
 };
 
-const populateFromFile = async (db: LyraInstance, filename: string, options?: PluginOptions): Promise<void> => {
+const populateFromFile = async (
+  db: LyraInstance,
+  filename: string,
+  options?: PopulateFromGlobOptions,
+): Promise<void> => {
+  console.log(`Loading ${filename}`);
   const data = await readFile(filename);
-  return populate(db, data, options);
+  return populate(db, data, { ...options, basePath: `${filename}/` });
 };
 
 type LyraInstance = Lyra<typeof defaultHtmlSchema>;
 
-const populate = async (
-  db: LyraInstance,
-  data: Buffer,
-  options?: {
-    transformFn?: TransformFn;
-    mergeStrategy?: MergeStrategy;
-  },
-): Promise<void> => {
+export const populate = async (db: LyraInstance, data: Buffer, options?: PopulateOptions): Promise<void> => {
   const records: DefaultSchemaElement[] = [];
   rehype().use(rehypePresetMinify).use(rehypeLyra, records, options).process(data);
   return insertBatch(db, records);
 };
 
-export function rehypeLyra(records: DefaultSchemaElement[], options?: PluginOptions) {
+export function rehypeLyra(records: DefaultSchemaElement[], options?: PopulateOptions) {
   return (tree: Root) => {
-    tree.children.forEach((child, i) => visitChildren(child, tree, `root[${i}]`, records, options));
+    tree.children.forEach((child, i) =>
+      visitChildren(child, tree, `${options?.basePath ?? ""}root[${i}]`, records, options),
+    );
   };
 }
 
@@ -69,7 +71,7 @@ function visitChildren(
   parent: Parent,
   path: string,
   records: DefaultSchemaElement[],
-  options?: PluginOptions,
+  options?: PopulateOptions,
 ) {
   if (node.type === "text") {
     addRecords(node.value, (parent as Element).tagName, path, records, options?.mergeStrategy ?? "merge");

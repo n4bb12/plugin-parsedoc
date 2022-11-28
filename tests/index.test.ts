@@ -4,10 +4,11 @@ import { create, search } from "@lyrasearch/lyra";
 
 t.test("it should store the values", async t => {
   const db = create({ schema });
-  await populateFromGlob(db, "tests/fixtures/index.html");
+  const filepath = "tests/fixtures/index.html";
+  await populateFromGlob(db, filepath);
   t.strictSame(
     (await search(db, { term: "Test" })).hits.map(({ document }) => document),
-    [{ id: "root[1].html[0].head[1]", content: "Test", type: "title" }],
+    [{ id: `${filepath}/root[1].html[0].head[1]`, content: "Test", type: "title" }],
   );
 });
 
@@ -45,33 +46,43 @@ t.test("it should not merge records when they belong to different containers", a
 
 t.test("it should change tags when specified in a transformFn", async t => {
   const db = create({ schema });
-  await populateFromGlob(db, "tests/fixtures/h1.html", {
+  const filepath = "tests/fixtures/h1.html";
+  await populateFromGlob(db, filepath, {
     transformFn: node => (node.tag === "h1" ? { ...node, tag: "h2" } : node),
   });
-  t.strictSame(Object.values(db.docs), [{ id: "root[0].html[1].body[0]", content: "Heading", type: "h2" }]);
+  t.strictSame(Object.values(db.docs), [{ id: `${filepath}/root[0].html[1].body[0]`, content: "Heading", type: "h2" }]);
 });
 
 t.test("it should change the content when specified in a transformFn", async t => {
   const db = create({ schema });
-  await populateFromGlob(db, "tests/fixtures/h1.html", {
+  const filepath = "tests/fixtures/h1.html";
+  await populateFromGlob(db, filepath, {
     transformFn: node => (node.tag === "h1" ? { ...node, content: "New content" } : node),
   });
-  t.strictSame(Object.values(db.docs), [{ id: "root[0].html[1].body[0]", content: "New content", type: "h1" }]);
+  t.strictSame(Object.values(db.docs), [
+    { id: `${filepath}/root[0].html[1].body[0]`, content: "New content", type: "h1" },
+  ]);
 });
 
 t.test("it should change the raw content when specified in a transformFn", async t => {
   const db = create({ schema });
-  await populateFromGlob(db, "tests/fixtures/h1.html", {
+  const filepath = "tests/fixtures/h1.html";
+  await populateFromGlob(db, filepath, {
     transformFn: node => (node.tag === "h1" ? { ...node, raw: "<div><p>Hello</p></div>" } : node),
   });
-  t.strictSame(Object.values(db.docs), [{ id: "root[0].html[1].body[0].div[0]", content: "Hello", type: "p" }]);
+  t.strictSame(Object.values(db.docs), [
+    { id: `${filepath}/root[0].html[1].body[0].div[0]`, content: "Hello", type: "p" },
+  ]);
 });
 
 t.test("it should prioritize raw change over tag and content changes when both are specified", async t => {
   const db = create({ schema });
-  await populateFromGlob(db, "tests/fixtures/h1.html", {
+  const filepath = "tests/fixtures/h1.html";
+  await populateFromGlob(db, filepath, {
     transformFn: node =>
       node.tag === "h1" ? { tag: "h2", content: "New content", raw: "<div><p>Hello</p></div>" } : node,
   });
-  t.strictSame(Object.values(db.docs), [{ id: "root[0].html[1].body[0].div[0]", content: "Hello", type: "p" }]);
+  t.strictSame(Object.values(db.docs), [
+    { id: `${filepath}/root[0].html[1].body[0].div[0]`, content: "Hello", type: "p" },
+  ]);
 });
