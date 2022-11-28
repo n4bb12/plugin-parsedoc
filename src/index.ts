@@ -5,6 +5,8 @@ import { promisify } from "node:util";
 import { rehype } from "rehype";
 import rehypePresetMinify from "rehype-preset-minify";
 import { Content, Root, Parent, Element, Text } from "hast";
+import { toHtml } from "hast-util-to-html";
+import { fromHtml } from "hast-util-from-html";
 
 export enum MergeStrategy {
   merge = "merge",
@@ -41,7 +43,6 @@ export const populateFromGlob = async (
 };
 
 const populateFromFile = async (db: LyraInstance, filename: string, options?: PluginOptions): Promise<void> => {
-  // TODO: stream
   const data = await readFile(filename);
   return populate(db, data, options);
 };
@@ -79,36 +80,38 @@ function visitChildren(
     return;
   }
 
-  if (node.type === "element" && typeof options?.transformFn === "function") {
-    applyTransform(node, options!.transformFn)
-  }
-
   if (!("children" in node)) return;
 
-  node.children.forEach((child, i) => {
-    visitChildren(child, node, `${path}.${node.tagName}[${i}]`, records, options);
+  const transformedNode = typeof options?.transformFn === "function" ? applyTransform(node, options.transformFn) : node;
+
+  transformedNode.children.forEach((child, i) => {
+    visitChildren(child, transformedNode, `${path}.${transformedNode.tagName}[${i}]`, records, options);
   });
 }
 
-function applyTransform(node: Element, transformFn: TransformFn) {
+function applyTransform(node: Element, transformFn: TransformFn): Element {
   const preparedNode = prepareNode(node);
-    const transformedNode = transformFn(preparedNode);
-    applyChanges(node, transformedNode);
+  const transformedNode = transformFn(preparedNode);
+  return applyChanges(node, transformedNode);
 }
 
 function prepareNode(node: Element): NodeContent {
   const tag = node.tagName;
-  const content = isContentNode(node) ? (node.children[0] as Text).value : ""
-  return { tag, content, raw: "" };
+  const content = isContentNode(node) ? (node.children[0] as Text).value : "";
+  const raw = toHtml(node);
+  return { tag, content, raw };
 }
 
 function isContentNode(node: Element): boolean {
   return node.children.length === 1 && node.children[0].type === "text";
 }
 
-function applyChanges(node: Element, transformedNode: NodeContent) {
+function applyChanges(node: Element, transformedNode: NodeContent): Element {
+  if (toHtml(node) !== transformedNode.raw)
+    return fromHtml(transformedNode.raw, { fragment: true }).children[0] as Element;
   node.tagName = transformedNode.tag;
-  if (isContentNode(node)) (node.children[0] as Text).value = transformedNode.content
+  if (isContentNode(node)) (node.children[0] as Text).value = transformedNode.content;
+  return node;
 }
 
 function addRecords(
@@ -122,7 +125,7 @@ function addRecords(
   const newRecord = { type, content, id: parentPath };
   switch (mergeStrategy) {
     case MergeStrategy.merge:
-      if (!isRecordMergable(parentPath, type, records)) {
+      if (!isRecordMergeable(parentPath, type, records)) {
         records.push(newRecord);
         return;
       }
@@ -132,7 +135,7 @@ function addRecords(
       records.push(newRecord);
       return;
     case MergeStrategy.both:
-      if (!isRecordMergable(parentPath, type, records)) {
+      if (!isRecordMergeable(parentPath, type, records)) {
         records.push(newRecord, { ...newRecord });
         return;
       }
@@ -142,7 +145,7 @@ function addRecords(
   }
 }
 
-function isRecordMergable(path: string, tag: string, records: DefaultSchemaElement[]): boolean {
+function isRecordMergeable(path: string, tag: string, records: DefaultSchemaElement[]): boolean {
   if (!records.length) return false;
   const lastRecord = records[records.length - 1];
   const parentPath = pathWithoutLastIndex(path);
