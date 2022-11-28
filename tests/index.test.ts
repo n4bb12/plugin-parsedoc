@@ -1,5 +1,5 @@
 import t from "tap";
-import { populateFromGlob, defaultHtmlSchema as schema, MergeStrategy } from "../src/index.js";
+import { populateFromGlob, defaultHtmlSchema as schema } from "../src/index.js";
 import { create, search } from "@lyrasearch/lyra";
 
 t.test("it should store the values", async t => {
@@ -20,13 +20,13 @@ t.test("when there are multiple consecutive elements with text with the same tag
 
   await t.test("it should keep records separated when the strategy is split", async t => {
     const db = create({ schema });
-    await populateFromGlob(db, "tests/fixtures/two-paragraphs.html", { mergeStrategy: MergeStrategy.split });
+    await populateFromGlob(db, "tests/fixtures/two-paragraphs.html", { mergeStrategy: "split" });
     t.equal(Object.values(db.docs).length, 2);
   });
 
   await t.test("it should keep separated and merged records when the strategy is both", async t => {
     const db = create({ schema });
-    await populateFromGlob(db, "tests/fixtures/two-paragraphs.html", { mergeStrategy: MergeStrategy.both });
+    await populateFromGlob(db, "tests/fixtures/two-paragraphs.html", { mergeStrategy: "both" });
     t.equal(Object.values(db.docs).length, 3);
   });
 });

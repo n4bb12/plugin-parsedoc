@@ -8,11 +8,7 @@ import { Content, Root, Parent, Element, Text } from "hast";
 import { toHtml } from "hast-util-to-html";
 import { fromHtml } from "hast-util-from-html";
 
-export enum MergeStrategy {
-  merge = "merge",
-  split = "split",
-  both = "both",
-}
+export type MergeStrategy = "merge" | "split" | "both";
 
 export const defaultHtmlSchema = {
   type: "string",
@@ -76,7 +72,7 @@ function visitChildren(
   options?: PluginOptions,
 ) {
   if (node.type === "text") {
-    addRecords(node.value, (parent as Element).tagName, path, records, options?.mergeStrategy ?? MergeStrategy.merge);
+    addRecords(node.value, (parent as Element).tagName, path, records, options?.mergeStrategy ?? "merge");
     return;
   }
 
@@ -124,17 +120,17 @@ function addRecords(
   const parentPath = path.substring(0, path.lastIndexOf("."));
   const newRecord = { type, content, id: parentPath };
   switch (mergeStrategy) {
-    case MergeStrategy.merge:
+    case "merge":
       if (!isRecordMergeable(parentPath, type, records)) {
         records.push(newRecord);
         return;
       }
       addContentToLastRecord(records, content);
       return;
-    case MergeStrategy.split:
+    case "split":
       records.push(newRecord);
       return;
-    case MergeStrategy.both:
+    case "both":
       if (!isRecordMergeable(parentPath, type, records)) {
         records.push(newRecord, { ...newRecord });
         return;
