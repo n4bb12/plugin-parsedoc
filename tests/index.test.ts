@@ -37,8 +37,16 @@ t.test("it should not merge records when a different tag element goes in between
   t.equal(Object.values(db.docs).length, 3);
 });
 
-t.test("it should not merge records when they belong to different containers ", async t => {
+t.test("it should not merge records when they belong to different containers", async t => {
   const db = create({ schema });
   await populateFromGlob(db, "tests/fixtures/different-containers.html");
   t.equal(Object.values(db.docs).length, 2);
+});
+
+t.test("it should change tags when specified in a transformFn", async t => {
+  const db = create({ schema });
+  await populateFromGlob(db, "tests/fixtures/h1.html", {
+    transformFn: node => (node.tag === "h1" ? { ...node, tag: "h2" } : node),
+  });
+  t.strictSame(Object.values(db.docs), [{ id: "root[0].html[1].body[0]", content: "Heading", type: "h2" }]);
 });

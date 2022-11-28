@@ -24,29 +24,23 @@ type DefaultSchemaElement = {
   id: string;
 };
 
+type PluginOptions = {
+  transformFn?: TransformFn;
+  mergeStrategy?: MergeStrategy;
+};
 const asyncGlob = promisify(glob);
 
 export const populateFromGlob = async (
   db: Lyra<typeof defaultHtmlSchema>,
   pattern: string,
-  options?: {
-    transform?: TransformFn;
-    mergeStrategy?: MergeStrategy;
-  },
+  options?: PluginOptions,
 ): Promise<void> => {
   const files = await asyncGlob(pattern);
   await Promise.all(files.map(filename => populateFromFile(db, filename, options)));
   return;
 };
 
-const populateFromFile = async (
-  db: LyraInstance,
-  filename: string,
-  options?: {
-    transformFn?: TransformFn;
-    mergeStrategy?: MergeStrategy;
-  },
-): Promise<void> => {
+const populateFromFile = async (db: LyraInstance, filename: string, options?: PluginOptions): Promise<void> => {
   // TODO: stream
   const data = await readFile(filename);
   return populate(db, data, options);
@@ -62,15 +56,14 @@ const populate = async (
     mergeStrategy?: MergeStrategy;
   },
 ): Promise<void> => {
-  const mergeStrategy = options?.mergeStrategy ?? MergeStrategy.merge;
   const records: DefaultSchemaElement[] = [];
-  rehype().use(rehypePresetMinify).use(rehypeLyra, records, mergeStrategy).process(data);
+  rehype().use(rehypePresetMinify).use(rehypeLyra, records, options).process(data);
   return insertBatch(db, records);
 };
 
-export function rehypeLyra(records: DefaultSchemaElement[], mergeStrategy: MergeStrategy) {
+export function rehypeLyra(records: DefaultSchemaElement[], options?: PluginOptions) {
   return (tree: Root) => {
-    tree.children.forEach((child, i) => visitChildren(child, tree, `root[${i}]`, records, mergeStrategy));
+    tree.children.forEach((child, i) => visitChildren(child, tree, `root[${i}]`, records, options));
   };
 }
 
@@ -79,18 +72,32 @@ function visitChildren(
   parent: Parent,
   path: string,
   records: DefaultSchemaElement[],
-  mergeStrategy: MergeStrategy,
+  options?: PluginOptions,
 ) {
   if (node.type === "text") {
-    addRecords(node.value, (parent as Element).tagName, path, records, mergeStrategy);
+    addRecords(node.value, (parent as Element).tagName, path, records, options?.mergeStrategy ?? MergeStrategy.merge);
     return;
+  }
+
+  if (node.type === "element" && typeof options?.transformFn === "function") {
+    const preparedNode = prepareNode(node);
+    const transformedNode = options.transformFn(preparedNode);
+    applyTransform(node, transformedNode);
   }
 
   if (!("children" in node)) return;
 
   node.children.forEach((child, i) => {
-    visitChildren(child, node, `${path}.${node.tagName}[${i}]`, records, mergeStrategy);
+    visitChildren(child, node, `${path}.${node.tagName}[${i}]`, records, options);
   });
+}
+
+function prepareNode(node: Element): NodeContent {
+  return { tag: node.tagName, content: "", raw: "" };
+}
+
+function applyTransform(node: Element, transformedNode: NodeContent) {
+  node.tagName = transformedNode.tag;
 }
 
 function addRecords(

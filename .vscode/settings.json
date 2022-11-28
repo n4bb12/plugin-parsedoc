@@ -1,0 +1,5 @@
+{
+  "editor.defaultFormatter": "SimonSiefke.prettier-vscode",
+  "javascript.preferences.quoteStyle": "double",
+  "typescript.preferences.quoteStyle": "double"
+}
