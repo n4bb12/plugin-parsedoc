@@ -5,7 +5,7 @@ This plugin aims to generate an index for lyra from html files
 
 # Usage
 
-For the complete usage guide, please refer to the [official plugin documentation](https://docs.lyrajs.io/plugins/plugin-parsedoc).
+For the complete usage guide, please refer to the [official plugin documentation](https://docs.lyrasearch.io/plugins/plugin-system/parsedoc).
 
 # License
 
