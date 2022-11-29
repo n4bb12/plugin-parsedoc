@@ -16,7 +16,7 @@ export const defaultHtmlSchema = {
   id: "string",
 } as const;
 
-type DefaultSchemaElement = {
+export type DefaultSchemaElement = {
   type: string;
   content: string;
   id: string;
