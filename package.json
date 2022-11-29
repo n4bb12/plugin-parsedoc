@@ -1,6 +1,6 @@
 {
   "name": "@lyrasearch/plugin-parsedoc",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Lyra plugin to populate an index with HTML/Markdown documents",
   "main": "./dist/cjs/src/index.js",
   "module": "./dist/esm/src/index.js",
