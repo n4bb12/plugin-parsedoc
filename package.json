@@ -64,7 +64,9 @@
     "@lyrasearch/lyra": "^0.3.1",
     "glob": "^8.0.3",
     "hast-util-from-html": "^1.0.0",
+    "hast-util-from-string": "^2.0.0",
     "hast-util-to-html": "^8.0.3",
+    "hast-util-to-string": "^2.0.0",
     "rehype": "^12.0.1",
     "rehype-parse": "^8.0.4",
     "rehype-preset-minify": "^6.0.0"
