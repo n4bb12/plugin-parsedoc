@@ -4,9 +4,11 @@ import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import { rehype } from "rehype";
 import rehypePresetMinify from "rehype-preset-minify";
-import { Content, Root, Parent, Element, Text } from "hast";
+import { Content, Root, Parent, Element } from "hast";
 import { toHtml } from "hast-util-to-html";
 import { fromHtml } from "hast-util-from-html";
+import { toString } from "hast-util-to-string";
+import { fromString } from "hast-util-from-string";
 
 export type MergeStrategy = "merge" | "split" | "both";
 
@@ -16,7 +18,7 @@ export const defaultHtmlSchema = {
   id: "string",
 } as const;
 
-type DefaultSchemaElement = {
+export type DefaultSchemaElement = {
   type: string;
   content: string;
   id: string;
@@ -58,7 +60,7 @@ export const populate = async (db: LyraInstance, data: Buffer, options?: Populat
   return insertBatch(db, records);
 };
 
-export function rehypeLyra(records: DefaultSchemaElement[], options?: PopulateOptions) {
+function rehypeLyra(records: DefaultSchemaElement[], options?: PopulateOptions) {
   return (tree: Root) => {
     tree.children.forEach((child, i) =>
       visitChildren(child, tree, `${options?.basePath ?? ""}root[${i}]`, records, options),
@@ -95,20 +97,18 @@ function applyTransform(node: Element, transformFn: TransformFn): Element {
 
 function prepareNode(node: Element): NodeContent {
   const tag = node.tagName;
-  const content = isContentNode(node) ? (node.children[0] as Text).value : "";
+  const content = toString(node);
   const raw = toHtml(node);
   return { tag, content, raw };
-}
-
-function isContentNode(node: Element): boolean {
-  return node.children.length === 1 && node.children[0].type === "text";
 }
 
 function applyChanges(node: Element, transformedNode: NodeContent): Element {
   if (toHtml(node) !== transformedNode.raw)
     return fromHtml(transformedNode.raw, { fragment: true }).children[0] as Element;
   node.tagName = transformedNode.tag;
-  if (isContentNode(node)) (node.children[0] as Text).value = transformedNode.content;
+  if (toString(node) !== transformedNode.content) {
+    return fromString(node, transformedNode.content);
+  }
   return node;
 }
 
