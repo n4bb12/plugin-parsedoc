@@ -86,3 +86,15 @@ t.test("it should prioritize raw change over tag and content changes when both a
     { id: `${filepath}/root[0].html[1].body[0].div[0]`, content: "Hello", type: "p" },
   ]);
 });
+
+t.test("it should parse markdown files", async t => {
+  const db = create({ schema });
+  const filepath = "tests/fixtures/markdown.md";
+  await populateFromGlob(db, filepath);
+  t.strictSame(Object.values(db.docs), [
+    { id: `${filepath}/root[1].html[1].body[0]`, content: "Title", type: "h1" },
+    { id: `${filepath}/root[1].html[1].body[1]`, content: "Some content", type: "p" },
+    { id: `${filepath}/root[1].html[1].body[2]`, content: "Subtitle", type: "h2" },
+    { id: `${filepath}/root[1].html[1].body[3]`, content: "Some more content", type: "p" },
+  ]);
+});
