@@ -9,6 +9,10 @@ import { toHtml } from "hast-util-to-html";
 import { fromHtml } from "hast-util-from-html";
 import { toString } from "hast-util-to-string";
 import { fromString } from "hast-util-from-string";
+import remarkRehype from "remark-rehype";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
+import rehypeDocument from "rehype-document";
 
 export type MergeStrategy = "merge" | "split" | "both";
 
@@ -30,6 +34,8 @@ type PopulateFromGlobOptions = {
 };
 
 type PopulateOptions = PopulateFromGlobOptions & { basePath?: string };
+
+type FileType = "html" | "md";
 const asyncGlob = promisify(glob);
 
 export const populateFromGlob = async (
@@ -47,16 +53,39 @@ const populateFromFile = async (
   filename: string,
   options?: PopulateFromGlobOptions,
 ): Promise<void> => {
-  console.log(`Loading ${filename}`);
   const data = await readFile(filename);
-  return populate(db, data, { ...options, basePath: `${filename}/` });
+  const fileType = filename.slice(filename.lastIndexOf(".") + 1) as FileType;
+  return populate(db, data, fileType, { ...options, basePath: `${filename}/` });
 };
 
 type LyraInstance = Lyra<typeof defaultHtmlSchema>;
 
-export const populate = async (db: LyraInstance, data: Buffer, options?: PopulateOptions): Promise<void> => {
+export const populate = async (
+  db: LyraInstance,
+  data: Buffer | string,
+  fileType: FileType,
+  options?: PopulateOptions,
+): Promise<void> => {
   const records: DefaultSchemaElement[] = [];
-  rehype().use(rehypePresetMinify).use(rehypeLyra, records, options).process(data);
+  switch (fileType) {
+    case "md":
+      // eslint-disable-next-line no-case-declarations
+      const tree = unified().use(remarkParse).parse(data);
+      await unified()
+        .use(remarkRehype)
+        .use(rehypeDocument)
+        .use(rehypePresetMinify)
+        .use(rehypeLyra, records, options)
+        .run(tree);
+      break;
+    case "html":
+      rehype().use(rehypePresetMinify).use(rehypeLyra, records, options).process(data);
+      break;
+    /* c8 ignore start */
+    default:
+      return fileType;
+    /* c8 ignore stop */
+  }
   return insertBatch(db, records);
 };
 
@@ -80,7 +109,7 @@ function visitChildren(
     return;
   }
 
-  if (!("children" in node)) return;
+  if (!("tagName" in node)) return;
 
   const transformedNode = typeof options?.transformFn === "function" ? applyTransform(node, options.transformFn) : node;
 
