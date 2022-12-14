@@ -8,7 +8,7 @@ t.test("it should store the values", async t => {
   await populateFromGlob(db, filepath);
   t.strictSame(
     (await search(db, { term: "Test" })).hits.map(({ document }) => document),
-    [{ id: `${filepath}/root[1].html[0].head[1]`, content: "Test", type: "title" }],
+    [{ id: `${filepath}/root[1].html[0].head[1]`, content: "Test", type: "title", properties: {} }],
   );
 });
 
@@ -50,7 +50,7 @@ t.test("it should change tags when specified in a transformFn", async t => {
   await populateFromGlob(db, filepath, {
     transformFn: node => (node.tag === "h1" ? { ...node, tag: "h2" } : node),
   });
-  t.strictSame(Object.values(db.docs), [{ id: `${filepath}/root[0].html[1].body[0]`, content: "Heading", type: "h2" }]);
+  t.strictSame(Object.values(db.docs), [{ id: `${filepath}/root[0].html[1].body[0]`, content: "Heading", type: "h2", properties: {} }]);
 });
 
 t.test("it should change the content when specified in a transformFn", async t => {
@@ -60,7 +60,7 @@ t.test("it should change the content when specified in a transformFn", async t =
     transformFn: node => (node.tag === "h1" ? { ...node, content: "New content" } : node),
   });
   t.strictSame(Object.values(db.docs), [
-    { id: `${filepath}/root[0].html[1].body[0]`, content: "New content", type: "h1" },
+    { id: `${filepath}/root[0].html[1].body[0]`, content: "New content", type: "h1", properties: {} },
   ]);
 });
 
@@ -71,7 +71,7 @@ t.test("it should change the raw content when specified in a transformFn", async
     transformFn: node => (node.tag === "h1" ? { ...node, raw: "<div><p>Hello</p></div>" } : node),
   });
   t.strictSame(Object.values(db.docs), [
-    { id: `${filepath}/root[0].html[1].body[0].div[0]`, content: "Hello", type: "p" },
+    { id: `${filepath}/root[0].html[1].body[0].div[0]`, content: "Hello", type: "p", properties: {} },
   ]);
 });
 
@@ -83,7 +83,7 @@ t.test("it should prioritize raw change over tag and content changes when both a
       node.tag === "h1" ? { tag: "h2", content: "New content", raw: "<div><p>Hello</p></div>" } : node,
   });
   t.strictSame(Object.values(db.docs), [
-    { id: `${filepath}/root[0].html[1].body[0].div[0]`, content: "Hello", type: "p" },
+    { id: `${filepath}/root[0].html[1].body[0].div[0]`, content: "Hello", type: "p", properties: {} },
   ]);
 });
 
@@ -92,9 +92,23 @@ t.test("it should parse markdown files", async t => {
   const filepath = "tests/fixtures/markdown.md";
   await populateFromGlob(db, filepath);
   t.strictSame(Object.values(db.docs), [
-    { id: `${filepath}/root[1].html[1].body[0]`, content: "Title", type: "h1" },
-    { id: `${filepath}/root[1].html[1].body[1]`, content: "Some content", type: "p" },
-    { id: `${filepath}/root[1].html[1].body[2]`, content: "Subtitle", type: "h2" },
-    { id: `${filepath}/root[1].html[1].body[3]`, content: "Some more content", type: "p" },
+    { id: `${filepath}/root[1].html[1].body[0]`, content: "Title", type: "h1", properties: {} },
+    { id: `${filepath}/root[1].html[1].body[1]`, content: "Some content", type: "p", properties: {} },
+    { id: `${filepath}/root[1].html[1].body[2]`, content: "Subtitle", type: "h2", properties: {} },
+    { id: `${filepath}/root[1].html[1].body[3]`, content: "Some more content", type: "p", properties: {} },
+  ]);
+});
+
+t.test('should preserve the first property when there are multiple properties with the same name', async t => {
+  const db = create({ schema });
+  const filepath = "tests/fixtures/merge-properties.html";
+  await populateFromGlob(db, filepath, { mergeStrategy: "merge" });
+  t.strictSame(Object.values(db.docs), [
+    {
+      id: `${filepath}/root[0].html[1].body[0]`,
+      content: "First Second",
+      type: "p",
+      properties: { id: "first" },
+    },
   ]);
 });
