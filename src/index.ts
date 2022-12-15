@@ -13,6 +13,7 @@ import remarkRehype from "remark-rehype";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import rehypeDocument from "rehype-document";
+import { Properties } from 'hast';
 
 export type MergeStrategy = "merge" | "split" | "both";
 
@@ -92,7 +93,7 @@ export const populate = async (
 function rehypeLyra(records: DefaultSchemaElement[], options?: PopulateOptions) {
   return (tree: Root) => {
     tree.children.forEach((child, i) =>
-      visitChildren(child, tree, `${options?.basePath ?? ""}root[${i}]`, records, options),
+      visitChildren(child, tree, `${options?.basePath /* c8 ignore next */ ?? ""}root[${i}]`, records, options),
     );
   };
 }
@@ -105,7 +106,7 @@ function visitChildren(
   options?: PopulateOptions,
 ) {
   if (node.type === "text") {
-    addRecords(node.value, (parent as Element).tagName, path, records, options?.mergeStrategy ?? "merge");
+    addRecords(node.value, (parent as Element).tagName, path, (parent as Element).properties, records, options?.mergeStrategy ?? "merge");
     return;
   }
 
@@ -128,7 +129,8 @@ function prepareNode(node: Element): NodeContent {
   const tag = node.tagName;
   const content = toString(node);
   const raw = toHtml(node);
-  return { tag, content, raw };
+  const properties = node.properties;
+  return { tag, content, raw, properties };
 }
 
 function applyChanges(node: Element, transformedNode: NodeContent): Element {
@@ -145,18 +147,19 @@ function addRecords(
   content: string,
   type: string,
   path: string,
+  properties: Properties | undefined,
   records: DefaultSchemaElement[],
   mergeStrategy: MergeStrategy,
 ) {
   const parentPath = path.substring(0, path.lastIndexOf("."));
-  const newRecord = { type, content, id: parentPath };
+  const newRecord = { type, content, id: parentPath, properties };
   switch (mergeStrategy) {
     case "merge":
       if (!isRecordMergeable(parentPath, type, records)) {
         records.push(newRecord);
         return;
       }
-      addContentToLastRecord(records, content);
+      addContentToLastRecord(records, content, properties);
       return;
     case "split":
       records.push(newRecord);
@@ -167,7 +170,7 @@ function addRecords(
         return;
       }
       records.splice(records.length - 1, 0, newRecord);
-      addContentToLastRecord(records, content);
+      addContentToLastRecord(records, content, properties);
       return;
   }
 }
@@ -185,14 +188,17 @@ function pathWithoutLastIndex(path: string): string {
   return path.slice(0, lastBracket);
 }
 
-function addContentToLastRecord(records: DefaultSchemaElement[], content: string) {
-  records[records.length - 1].content += ` ${content}`;
+function addContentToLastRecord(records: (DefaultSchemaElement & { properties?: Properties})[], content: string, properties?: Properties) {
+  const lastRecord = records[records.length - 1];
+  lastRecord.content += ` ${content}`;
+  lastRecord.properties = { ...properties, ...lastRecord.properties };
 }
 
 export type NodeContent = {
   tag: string;
   raw: string;
   content: string;
+  properties?: Properties;
 };
 
 export type TransformFn = (node: NodeContent) => NodeContent;
